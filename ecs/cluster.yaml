@@ -184,7 +184,8 @@ Conditions:
 Resources:
   Cluster:
     Type: 'AWS::ECS::Cluster'
-    Properties: {}
+    Properties:
+      ClusterName: !Sub '${AWS::StackName}'
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:

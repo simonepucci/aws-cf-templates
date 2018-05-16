@@ -157,6 +157,14 @@ Resources:
             'awslogs-group':
               'Fn::ImportValue': !Sub '${ParentClusterStack}-LogGroup'
             'awslogs-stream-prefix': !Ref 'AWS::StackName'
+      - Name: "datadog-agent"
+        Image: "datadog/agent:latest"
+        Essential: true
+        Environment:
+          - Name: 'DD_API_KEY'
+            Value: '$YOUR_API_KEY'
+          - Name: 'ECS_FARGATE'
+            Value: 'true'
   RecordSet:
     Condition: HasZone
     Type: 'AWS::Route53::RecordSet'
