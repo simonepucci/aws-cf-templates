@@ -184,7 +184,8 @@ Conditions:
 Resources:
   Cluster:
     Type: 'AWS::ECS::Cluster'
-    Properties: {}
+    Properties:
+      ClusterName: !Sub '${AWS::StackName}'
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -257,6 +258,28 @@ Resources:
               'StringEquals':
                 'ecs:cluster':
                   !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${Cluster}'
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            # Rules which allow ECS to attach network interfaces to instances
+            # on your behalf in order for awsvpc networking mode to work right
+            - 'ec2:AttachNetworkInterface'
+            - 'ec2:CreateNetworkInterface'
+            - 'ec2:CreateNetworkInterfacePermission'
+            - 'ec2:DeleteNetworkInterface'
+            - 'ec2:DeleteNetworkInterfacePermission'
+            - 'ec2:Describe*'
+            - 'ec2:DetachNetworkInterface'
+            # Rules which allow ECS to update load balancers on your behalf
+            # with the information sabout how to send traffic to your containers
+            - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+            - 'elasticloadbalancing:DeregisterTargets'
+            - 'elasticloadbalancing:Describe*'
+            - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+            - 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
       - PolicyName: ecr
         PolicyDocument:
           Version: '2012-10-17'
@@ -297,6 +320,35 @@ Resources:
             - 'sqs:DeleteMessage'
             - 'sqs:ReceiveMessage'
             Resource: !GetAtt 'AutoScalingGroupLifecycleHookQueue.Arn'
+
+  # This is a role which is used by the ECS tasks themselves.
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                # Allow the ECS Tasks to download images from ECR
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
+
+                # Allow the ECS tasks to upload logs to CloudWatch
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+
   IAMPolicySSHAccess:
     Type: 'AWS::IAM::Policy'
     Condition: HasIAMUserSSHAccess
@@ -638,7 +690,7 @@ Resources:
                   SaveUserName=${SaveUserName//"@"/".at."}
                   if [ "${#SaveUserName}" -le "32" ]; then
                     if ! id -u "$SaveUserName" >/dev/null 2>&1; then
-                      #sudo will read each file in /etc/sudoers.d, skipping file names that end in ‘~’ or contain a ‘.’ character to avoid causing problems with package manager or editor temporary/backup files.
+                      #sudo will read each file in /etc/sudoers.d, skipping file names that end in ?~? or contain a ?.? character to avoid causing problems with package manager or editor temporary/backup files.
                       SaveUserFileName=$(echo "$SaveUserName" | tr "." " ")
                       /usr/sbin/useradd "$SaveUserName"
                       echo "$SaveUserName ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SaveUserFileName"
@@ -889,17 +941,19 @@ Resources:
       KeyName: !If [HasKeyName, !Ref KeyName, !Ref 'AWS::NoValue']
       UserData:
         'Fn::Base64': !Sub |
-          #!/bin/bash -ex
+          #!/bin/bash
+          mset -o pipefail
           trap '/opt/aws/bin/cfn-signal -e 1 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}' ERR
           echo "ECS_CLUSTER=${Cluster}" >> /etc/ecs/ecs.config
-          yum install -y aws-cfn-bootstrap
+          yum install -y aws-cfn-bootstrap aws-cli jq
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
           /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}
-          yum install -y aws-cli jq
-          instance_arn=$( curl -f http://localhost:51678/v1/metadata | jq -re .ContainerInstanceArn | awk -F/ '{print $NF}')
+          start ecs
+          sleep 5
+          task_def="dd-agent-task"
           az=$(curl -f http://169.254.169.254/latest/meta-data/placement/availability-zone)
-          region=${az:0:${#az} - 1}
-          echo "cluster=${Cluster} az=$az region=$region aws ecs start-task --cluster ${Cluster} --task-definition $task_def --container-instances $instance_arn --region $region" >> /etc/rc.local
+          instance_arn=$(curl -f http://127.0.0.1:51678/v1/metadata | jq -re .ContainerInstanceArn | awk -F/ '{print $NF}')
+          echo "cluster=${Cluster} az=$az region=${AWS::Region} aws ecs start-task --cluster ${Cluster} --task-definition $task_def --container-instances $instance_arn --region ${AWS::Region}" >> /etc/rc.local
   AutoScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
@@ -1372,6 +1426,16 @@ Outputs:
     Value: !Ref Cluster
     Export:
       Name: !Sub '${AWS::StackName}-Cluster'
+  Role:
+    Description: The ARN of the IAM role
+    Value: !GetAtt 'Role.Arn'
+    Export:
+      Name: !Sub '${AWS::StackName}-Role'
+  ECSTaskExecutionRole:
+    Description: The ARN of the ECS role
+    Value: !GetAtt 'ECSTaskExecutionRole.Arn'
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSTaskExecutionRole'
   LoadBalancerFullName:
     Description: 'ALB full name for services.'
     Value: !GetAtt 'LoadBalancer.LoadBalancerFullName'
@@ -1399,6 +1463,11 @@ Outputs:
       'Fn::ImportValue': !Sub '${ParentVPCStack}-VPC'
     Export:
       Name: !Sub '${AWS::StackName}-VPC'
+  SubnetsReach:
+    Description: 'Public or Private subnet mode of ECS cluster.'
+    Value: !Join [',', ['Fn::ImportValue': !Sub '${ParentVPCStack}-Subnets${SubnetsReach}']]
+    Export:
+      Name: !Sub '${AWS::StackName}-SubnetsReach'
   SecurityGroup:
     Description: 'Security Group of ECS cluster.'
     Value: !Ref SecurityGroup
