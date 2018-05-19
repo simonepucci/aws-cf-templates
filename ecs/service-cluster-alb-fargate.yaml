@@ -8,6 +8,7 @@ Metadata:
         default: 'Parent Stacks'
       Parameters:
       - ParentClusterStack
+      - ParentDDogStack
       - ParentAlertStack
       - ParentZoneStack
     - Label:
@@ -36,6 +37,9 @@ Metadata:
 Parameters:
   ParentClusterStack:
     Description: 'Stack name of parent Cluster stack based on ecs/cluster.yaml template.'
+    Type: String
+  ParentDDogStack:
+    Description: 'Stack name of parent Data Dog stack based on ecs/datadog-key.yaml template.'
     Type: String
   ParentAlertStack:
     Description: 'Optional but recommended stack name of parent alert stack based on operations/alert.yaml template.'
@@ -162,7 +166,7 @@ Resources:
         Essential: true
         Environment:
           - Name: 'DD_API_KEY'
-            Value: '$YOUR_API_KEY'
+            Value: '${ParentDDogStack}-DataDogKey'
           - Name: 'ECS_FARGATE'
             Value: 'true'
   RecordSet:
