@@ -329,6 +329,7 @@ Resources:
   Service:
     Type: 'AWS::ECS::Service'
     Properties:
+      ServiceName: !Sub '${AWS::StackName}'
       Cluster:
         'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
       DeploymentConfiguration:
