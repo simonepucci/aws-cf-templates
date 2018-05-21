@@ -414,6 +414,9 @@ Resources:
         FromPort: 0
         ToPort: 65535
         IpProtocol: tcp
+      - SourceSecurityGroupId:
+          'Fn::ImportValue': !Sub '${ParentVPCStack}-SGDefault'
+        IpProtocol: -1
   SecurityGroupInSSHBastion:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Condition: HasSSHBastionSecurityGroup
@@ -927,6 +930,7 @@ Resources:
       InstanceType: !Ref InstanceType
       SecurityGroups:
       - !Ref SecurityGroup
+      - Fn::ImportValue: !Sub '${ParentVPCStack}-SGDefault'
       KeyName: !If [HasKeyName, !Ref KeyName, !Ref 'AWS::NoValue']
       UserData:
         'Fn::Base64': !Sub |
@@ -1455,6 +1459,12 @@ Outputs:
     Value: !Ref SecurityGroup
     Export:
       Name: !Sub '${AWS::StackName}-SecurityGroup'
+  SecurityGroupVpc:
+    Description: 'Default Security Group of Parent VPC.'
+    Value:
+      'Fn::ImportValue': !Sub '${ParentVPCStack}-SGDefault'
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroupVpcDefault'
   LogGroup:
     Description: 'Log group of ECS cluster.'
     Value: !Ref LogGroup

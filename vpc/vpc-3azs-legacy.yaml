@@ -12,6 +12,7 @@ Metadata:
       - AZC
       - ClassB
       - VPC
+      - SGDefault
       - SubnetAPublic
       - RouteTableAPublic
       - SubnetBPublic
@@ -44,6 +45,9 @@ Parameters:
   VPC:
     Description: 'VPC'
     Type: 'AWS::EC2::VPC::Id'
+  SGDefault:
+    Description: 'Default VPC Security Group'
+    Type: 'AWS::EC2::SecurityGroup::Id'
   SubnetAPublic:
     Description: 'Subnet A public.'
     Type: 'AWS::EC2::Subnet::Id'
@@ -121,6 +125,11 @@ Outputs:
     Value: !Ref VPC
     Export:
       Name: !Sub '${AWS::StackName}-VPC'
+  SGDefault:
+    Description: 'Default VPC Security Group'
+    Value: !Ref SGDefault
+    Export:
+      Name: !Sub '${AWS::StackName}-SGDefault'
   SubnetsPublic:
     Description: 'Subnets public.'
     Value: !Join [',', [!Ref SubnetAPublic, !Ref SubnetBPublic, !Ref SubnetCPublic]]

@@ -358,6 +358,8 @@ Resources:
           SecurityGroups:
             - Fn::ImportValue:
                 !Join ['-', [!Ref 'ParentClusterStack', 'SecurityGroup']]
+            - Fn::ImportValue:
+                !Join ['-', [!Ref 'ParentClusterStack', 'SecurityGroupVpcDefault']]
           Subnets: !Split [',', 'Fn::ImportValue': !Sub '${ParentClusterStack}-SubnetsReach']
 
       LoadBalancers:
