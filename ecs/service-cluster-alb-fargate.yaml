@@ -63,7 +63,7 @@ Parameters:
     ConstraintDescription: 'Must not be longer than 255'
     MaxLength: 255
   LoadBalancerPath:
-    Description: 'Optional path part of the path pattern. E.g., for service, the path pattern will be /service/*.  Specify LoadBalancerPath and/or LoadBalancerHostPattern.'
+    Description: 'Optional path part of the path pattern. E.g., for /service/*, the path pattern will be "/service/*".  Specify LoadBalancerPath and/or LoadBalancerHostPattern.'
     Type: String
     Default: 'service'
     ConstraintDescription: 'Must not be longer than 255'
@@ -86,13 +86,16 @@ Parameters:
     Description: 'The image to use for a container, which is passed directly to the Docker daemon. You can use images in the Docker Hub registry or specify other repositories (repository-url/image:tag).'
     Type: String
   Cpu:
-    Description: 'How much CPU to give the container. 1024 is 1 CPU'
+    Description: 'How much CPU to give the container. 1024 is 1 CPU. AWS Fargate only supports certain combinations of CPU and memory configurations: ex. cpu 256 - mem 512 or 1024 or 2048, cpu 512 - mem 1024 through 4096 in 1GiB increments, cpu 1024 - mem 2048 through 8192 in 1GiB increments, cpu 2048 - mem 4096 through 16384 in 1GiB increments, cpu 4096 - mem 8192 through 30720 in 1GiB increments'
+
     Type: Number
-    Default: 256
+    Default: 512
+    AllowedValues: [256,512,1024,2048,4096]
   Memory:
     Description: 'The memory hard limit set for the container'
     Type: Number
-    Default: 512
+    Default: 1024
+    AllowedValues: [512,1024,2048,4096,8192,16384]
   ContainerPort:
     Description: 'The port exposed by the container'
     Type: Number
@@ -123,7 +126,42 @@ Parameters:
     Description: 'Name that is used to create the DNS entry ${SubDomainName}.${HostedZoneName} (required when ParentZoneStack is set, otherwise not considered)'
     Type: String
     Default: ''
-Mappings: {}
+Mappings:
+  CpuMap:
+    "256":
+      "1": "128"
+      "2": "128"
+    "512":
+      "1": "384"
+      "2": "128"
+    "1024":
+      "1": "768"
+      "2": "256"
+    "2048":
+      "1": "1792"
+      "2": "256"
+    "4096":
+      "1": "3840"
+      "2": "256"
+  MemMap:
+    "512":
+      "1": "384"
+      "2": "128"
+    "1024":
+      "1": "896"
+      "2": "128"
+    "2048":
+      "1": "1920"
+      "2": "128"
+    "4096":
+      "1": "3968"
+      "2": "128"
+    "8192":
+      "1": "8064"
+      "2": "128"
+    "16384":
+      "1": "16256"
+      "2": "128"
 Conditions:
   HasLoadBalancerHttps: !Equals [!Ref LoadBalancerHttps, 'true']
   HasLoadBalancerPath: !Not [!Equals [!Ref LoadBalancerPath, '']]
@@ -148,8 +186,8 @@ Resources:
       ContainerDefinitions:
       - Name: main # if you change this, you also must change the AWS::ECS::Service
         Image: !Ref Image
-        Cpu: !Ref Cpu
-        Memory: !Ref Memory
+        Cpu: !FindInMap [CpuMap, !Ref Cpu, 1]
+        Memory: !FindInMap [MemMap, !Ref Memory, 1]
         PortMappings:
         - ContainerPort: !Ref ContainerPort # if you change this, you also must change the AWS::ECS::Service
           Protocol: tcp
@@ -163,10 +201,14 @@ Resources:
             'awslogs-stream-prefix': !Ref 'AWS::StackName'
       - Name: "datadog-agent"
         Image: "datadog/agent:latest"
+        Cpu: !FindInMap [CpuMap, !Ref Cpu, 2]
+        Memory: !FindInMap [MemMap, !Ref Memory, 2]
         Essential: true
         Environment:
           - Name: 'DD_API_KEY'
-            Value: '${ParentDDogStack}-DataDogKey'
+            Value: 
+              Fn::ImportValue:
+                !Sub '${ParentDDogStack}-DataDogKey'
           - Name: 'ECS_FARGATE'
             Value: 'true'
   RecordSet:
@@ -300,10 +342,10 @@ Resources:
             - !Ref LoadBalancerHostPattern
           - Field: path-pattern
             Values:
-            - !Sub '/${LoadBalancerPath}/*'
+            - !Sub '${LoadBalancerPath}'
         - - Field: path-pattern
             Values:
-            - !Sub '/${LoadBalancerPath}/*'
+            - !Sub '${LoadBalancerPath}'
       - !If
         - HasLoadBalancerHostPattern
         - - Field: host-header
@@ -329,10 +371,10 @@ Resources:
             - !Ref LoadBalancerHostPattern
           - Field: path-pattern
             Values:
-            - !Sub '/${LoadBalancerPath}/*'
+            - !Sub '${LoadBalancerPath}'
         - - Field: path-pattern
             Values:
-            - !Sub '/${LoadBalancerPath}/*'
+            - !Sub '${LoadBalancerPath}'
       - !If
         - HasLoadBalancerHostPattern
         - - Field: host-header
