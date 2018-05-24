@@ -246,61 +246,61 @@ Resources:
           'Fn::If':
             - Env1Exist
             -
-              - Name: !Select [0, !Split ["=", !Ref Env1]]
-                Value: !Select [1, !Split ["=", !Ref Env1]]
+              - Name: !Select [0, !Split ["|", !Ref Env1]]
+                Value: !Select [1, !Split ["|", !Ref Env1]]
               - 'Fn::If':
                 - Env2Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env2]]
-                  Value: !Select [1, !Split ["=", !Ref Env2]]
+                  Name: !Select [0, !Split ["|", !Ref Env2]]
+                  Value: !Select [1, !Split ["|", !Ref Env2]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env3Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env3]]
-                  Value: !Select [1, !Split ["=", !Ref Env3]]
+                  Name: !Select [0, !Split ["|", !Ref Env3]]
+                  Value: !Select [1, !Split ["|", !Ref Env3]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env4Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env4]]
-                  Value: !Select [1, !Split ["=", !Ref Env4]]
+                  Name: !Select [0, !Split ["|", !Ref Env4]]
+                  Value: !Select [1, !Split ["|", !Ref Env4]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env5Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env5]]
-                  Value: !Select [1, !Split ["=", !Ref Env5]]
+                  Name: !Select [0, !Split ["|", !Ref Env5]]
+                  Value: !Select [1, !Split ["|", !Ref Env5]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env6Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env6]]
-                  Value: !Select [1, !Split ["=", !Ref Env6]]
+                  Name: !Select [0, !Split ["|", !Ref Env6]]
+                  Value: !Select [1, !Split ["|", !Ref Env6]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env7Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env7]]
-                  Value: !Select [1, !Split ["=", !Ref Env7]]
+                  Name: !Select [0, !Split ["|", !Ref Env7]]
+                  Value: !Select [1, !Split ["|", !Ref Env7]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env8Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env8]]
-                  Value: !Select [1, !Split ["=", !Ref Env8]]
+                  Name: !Select [0, !Split ["|", !Ref Env8]]
+                  Value: !Select [1, !Split ["|", !Ref Env8]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env9Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env9]]
-                  Value: !Select [1, !Split ["=", !Ref Env9]]
+                  Name: !Select [0, !Split ["|", !Ref Env9]]
+                  Value: !Select [1, !Split ["|", !Ref Env9]]
                 - !Ref "AWS::NoValue"
               - 'Fn::If':
                 - Env10Exist
                 -
-                  Name: !Select [0, !Split ["=", !Ref Env10]]
-                  Value: !Select [1, !Split ["=", !Ref Env10]]
+                  Name: !Select [0, !Split ["|", !Ref Env10]]
+                  Value: !Select [1, !Split ["|", !Ref Env10]]
                 - !Ref "AWS::NoValue"
             - !Ref "AWS::NoValue"
         LogConfiguration:
