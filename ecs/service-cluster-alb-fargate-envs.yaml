@@ -166,6 +166,126 @@ Parameters:
     Type: String
     Description: An item of possible environment variables
     Default: ''
+  Env11:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env12:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env13:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env14:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env15:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env16:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env17:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env18:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env19:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env20:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env21:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env22:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env23:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env24:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env25:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env26:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env27:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env28:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env29:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env30:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env31:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env32:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env33:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env34:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env35:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env36:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env37:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env38:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env39:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env40:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
 Mappings:
   CpuMap:
     "256":
@@ -218,6 +338,36 @@ Conditions:
   Env8Exist: !Not [ !Equals [!Ref Env8, '']]
   Env9Exist: !Not [ !Equals [!Ref Env9, '']]
   Env10Exist: !Not [ !Equals [!Ref Env10, '']]
+  Env11Exist: !Not [ !Equals [!Ref Env11, '']]
+  Env12Exist: !Not [ !Equals [!Ref Env12, '']]
+  Env13Exist: !Not [ !Equals [!Ref Env13, '']]
+  Env14Exist: !Not [ !Equals [!Ref Env14, '']]
+  Env15Exist: !Not [ !Equals [!Ref Env15, '']]
+  Env16Exist: !Not [ !Equals [!Ref Env16, '']]
+  Env17Exist: !Not [ !Equals [!Ref Env17, '']]
+  Env18Exist: !Not [ !Equals [!Ref Env18, '']]
+  Env19Exist: !Not [ !Equals [!Ref Env19, '']]
+  Env20Exist: !Not [ !Equals [!Ref Env20, '']]
+  Env21Exist: !Not [ !Equals [!Ref Env21, '']]
+  Env22Exist: !Not [ !Equals [!Ref Env22, '']]
+  Env23Exist: !Not [ !Equals [!Ref Env23, '']]
+  Env24Exist: !Not [ !Equals [!Ref Env24, '']]
+  Env25Exist: !Not [ !Equals [!Ref Env25, '']]
+  Env26Exist: !Not [ !Equals [!Ref Env26, '']]
+  Env27Exist: !Not [ !Equals [!Ref Env27, '']]
+  Env28Exist: !Not [ !Equals [!Ref Env28, '']]
+  Env29Exist: !Not [ !Equals [!Ref Env29, '']]
+  Env30Exist: !Not [ !Equals [!Ref Env30, '']]
+  Env31Exist: !Not [ !Equals [!Ref Env31, '']]
+  Env32Exist: !Not [ !Equals [!Ref Env32, '']]
+  Env33Exist: !Not [ !Equals [!Ref Env33, '']]
+  Env34Exist: !Not [ !Equals [!Ref Env34, '']]
+  Env35Exist: !Not [ !Equals [!Ref Env35, '']]
+  Env36Exist: !Not [ !Equals [!Ref Env36, '']]
+  Env37Exist: !Not [ !Equals [!Ref Env37, '']]
+  Env38Exist: !Not [ !Equals [!Ref Env38, '']]
+  Env39Exist: !Not [ !Equals [!Ref Env39, '']]
+  Env40Exist: !Not [ !Equals [!Ref Env40, '']]
 Resources:
   TaskDefinition:
     Type: 'AWS::ECS::TaskDefinition'
@@ -301,6 +451,186 @@ Resources:
                 -
                   Name: !Select [0, !Split ["|", !Ref Env10]]
                   Value: !Select [1, !Split ["|", !Ref Env10]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env11Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env11]]
+                  Value: !Select [1, !Split ["|", !Ref Env11]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env12Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env12]]
+                  Value: !Select [1, !Split ["|", !Ref Env12]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env13Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env13]]
+                  Value: !Select [1, !Split ["|", !Ref Env13]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env14Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env14]]
+                  Value: !Select [1, !Split ["|", !Ref Env14]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env15Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env15]]
+                  Value: !Select [1, !Split ["|", !Ref Env15]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env16Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env16]]
+                  Value: !Select [1, !Split ["|", !Ref Env16]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env17Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env17]]
+                  Value: !Select [1, !Split ["|", !Ref Env17]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env18Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env18]]
+                  Value: !Select [1, !Split ["|", !Ref Env18]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env19Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env19]]
+                  Value: !Select [1, !Split ["|", !Ref Env19]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env20Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env20]]
+                  Value: !Select [1, !Split ["|", !Ref Env20]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env21Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env21]]
+                  Value: !Select [1, !Split ["|", !Ref Env21]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env22Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env22]]
+                  Value: !Select [1, !Split ["|", !Ref Env22]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env23Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env23]]
+                  Value: !Select [1, !Split ["|", !Ref Env23]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env24Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env24]]
+                  Value: !Select [1, !Split ["|", !Ref Env24]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env25Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env25]]
+                  Value: !Select [1, !Split ["|", !Ref Env25]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env26Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env26]]
+                  Value: !Select [1, !Split ["|", !Ref Env26]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env27Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env27]]
+                  Value: !Select [1, !Split ["|", !Ref Env27]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env28Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env28]]
+                  Value: !Select [1, !Split ["|", !Ref Env28]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env29Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env29]]
+                  Value: !Select [1, !Split ["|", !Ref Env29]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env30Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env30]]
+                  Value: !Select [1, !Split ["|", !Ref Env30]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env31Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env31]]
+                  Value: !Select [1, !Split ["|", !Ref Env31]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env32Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env32]]
+                  Value: !Select [1, !Split ["|", !Ref Env32]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env33Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env33]]
+                  Value: !Select [1, !Split ["|", !Ref Env33]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env34Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env34]]
+                  Value: !Select [1, !Split ["|", !Ref Env34]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env35Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env35]]
+                  Value: !Select [1, !Split ["|", !Ref Env35]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env36Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env36]]
+                  Value: !Select [1, !Split ["|", !Ref Env36]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env37Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env37]]
+                  Value: !Select [1, !Split ["|", !Ref Env37]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env38Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env38]]
+                  Value: !Select [1, !Split ["|", !Ref Env38]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env39Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env39]]
+                  Value: !Select [1, !Split ["|", !Ref Env39]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env40Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env40]]
+                  Value: !Select [1, !Split ["|", !Ref Env40]]
                 - !Ref "AWS::NoValue"
             - !Ref "AWS::NoValue"
         LogConfiguration:
