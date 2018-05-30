@@ -107,7 +107,7 @@ function cloudformateapp() {
 # Create or upgrade Cloudformation for the service
     _ACTION="$1";
     _ENV_FILEPATTERN="$2";
-    [ -f ${WORKDIR}/${ENVNAME}/service-cluster-alb-fargate.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/${ENVNAME}/service-cluster-alb-fargate.yaml is missing."
+    [ -f ${WORKDIR}/service-cluster-alb-fargate-envs.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-fargate-envs.yaml is missing."
 
     COUNTENV=0;
     PARAMENVS="";
@@ -119,7 +119,7 @@ function cloudformateapp() {
     done
 
     aws cloudformation ${_ACTION}-stack  --stack-name ${APPDN} \
-    --template-body file://${WORKDIR}/${ENVNAME}/service-cluster-alb-fargate.yaml \
+    --template-body file://${WORKDIR}/service-cluster-alb-fargate-envs.yaml \;
     --capabilities CAPABILITY_IAM \
     --parameters \
       ParameterKey=ContainerPort,ParameterValue=${PORTAPP} \
