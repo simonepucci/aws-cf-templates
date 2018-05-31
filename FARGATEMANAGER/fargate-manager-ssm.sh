@@ -155,7 +155,7 @@ function setenv() {
     ENV_FILE="${SERVICE_ENV}.allenvs.log";
     for envfileitem in ${ENV_FILEPATTERN}*;
     do
-        cat ${envfileitem} >> ${ENV_FILE};
+        cat ${envfileitem} >> ${ENV_FILE} 2>/dev/null;
     done
     
     # Read currently set env vars in service
