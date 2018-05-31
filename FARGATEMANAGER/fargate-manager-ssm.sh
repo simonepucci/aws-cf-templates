@@ -119,7 +119,7 @@ function cloudformateapp() {
     done
 
     aws cloudformation ${_ACTION}-stack  --stack-name ${APPDN} \
-    --template-body file://${WORKDIR}/service-cluster-alb-fargate-envs.yaml \;
+    --template-body file://${WORKDIR}/service-cluster-alb-fargate-envs.yaml \
     --capabilities CAPABILITY_IAM \
     --parameters \
       ParameterKey=ContainerPort,ParameterValue=${PORTAPP} \
