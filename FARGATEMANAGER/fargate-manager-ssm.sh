@@ -133,7 +133,7 @@ function cloudformateapp() {
       ParameterKey=LoadBalancerHostPattern,ParameterValue=${APPDN}.${ENVNAME}.${ECSDOMAIN} \
       ParameterKey=LoadBalancerHttps,ParameterValue=false \
       ParameterKey=DesiredCount,ParameterValue=${SCALEAPP} \
-      ParameterKey=HealthCheckPeriod,ParameterValue=${ALBGRACE} \
+      ParameterKey=HealthCheckGracePeriodSeconds,ParameterValue=${ALBGRACE} \
       ParameterKey=MaxCapacity,ParameterValue=${MAXSCALEAPP} \
       ParameterKey=MinCapacity,ParameterValue=${MINSCALEAPP} \
       ParameterKey=ParentAlertStack,ParameterValue="${ALERTSTACK}" \

@@ -31,7 +31,7 @@ Metadata:
       - Cpu
       - ContainerPort
       - HealthCheckPath
-      - HealthCheckPeriod
+      - HealthCheckGracePeriodSeconds
       - DesiredCount
       - MaxCapacity
       - MinCapacity
@@ -105,7 +105,7 @@ Parameters:
     Description: 'The path against which will be done the HealthCheck'
     Type: String
     Default: '/'
-  HealthCheckPeriod:
+  HealthCheckGracePeriodSeconds:
     Description: 'The period of time, in seconds, that the Amazon ECS service scheduler should ignore unhealthy Elastic Load Balancing target health checks after a task has first started'
     Type: Number
     Default: 120
@@ -841,7 +841,7 @@ Resources:
         MaximumPercent: 200
         MinimumHealthyPercent: 50
       DesiredCount: !Ref DesiredCount
-      HealthCheckGracePeriodSeconds: !Ref HealthCheckPeriod
+      HealthCheckGracePeriodSeconds: !Ref HealthCheckGracePeriodSeconds
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
