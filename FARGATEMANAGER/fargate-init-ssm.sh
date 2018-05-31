@@ -18,6 +18,7 @@
 # portvalue     ->  the application exposed port number
 # albvalue      ->  the application priority in the Alb listener rules
 # albhealth     ->  the application health check path for the service
+# albgracesec   ->  the application health check grace period for the service
 # clusterstack  ->  Common Parent Stack for cluster
 # alertstack    ->  Common Parent Stack for alerts
 # ddogstack     ->  Common Parent Stack for datadog key
@@ -123,6 +124,7 @@ MEMVALUE=$(checkparameter memvalue); MEMVALUE=${MEMVALUE:-"1024"};
 PORTVALUE=$(checkparameter portvalue); PORTVALUE=${PORTVALUE:-"80"};
 ALBVALUE=$(checkparameter albvalue); 
 ALBHEALTH=$(checkparameter albhealth); ALBHEALTH=${ALBHEALTH:-/status};
+ALBGRACE=$(checkparameter albgracesec); ALBGRACE=${ALBGRACE:-"120"};
 CLUSTERSTACK=$(checkparameter clusterstack); CLUSTERSTACK=${CLUSTERSTACK:-"$ENVNAME"};
 ALERTSTACK=$(checkparameter alertstack); ALERTSTACK=${ALERTSTACK:-"operations-alert"};
 DDOGSTACK=$(checkparameter ddogstack); DDOGSTACK=${DDOGSTACK:-"ddog-key"};
@@ -137,6 +139,7 @@ useraskparameter "memvalue" "${MEMVALUE}" "the desired number of GB of memory fo
 useraskparameter "portvalue" "${PORTVALUE}" "the application exposed port number";
 useraskparameter "albvalue" "${ALBVALUE}" "the application priority in the Alb listener rules (!Must be Unique!)";
 useraskparameter "albhealth" "${ALBHEALTH}" "the application health check path for the service";
+useraskparameter "albgracesec" "${ALBGRACE}" "the application health check grace period for the service";
 useraskparameter "clusterstack" "${CLUSTERSTACK}" "Common Parent Stack for cluster";
 useraskparameter "alertstack" "${ALERTSTACK}" "Common Parent Stack Name for alerts (Should not be changed)";
 useraskparameter "ddogstack" "${DDOGSTACK}" "Common Parent Stack for datadog key (Should not be changed)";
@@ -151,23 +154,5 @@ do
     useraskparameter "environmentvars${COUNTENV}" "${ENVCUR}" "Environment Variable ${COUNTENV}";
     echo
 done
-
-
-#    [ -f skipdeploy ] && { echo "SKIPPING Forced"; echo "Found \"skipdeploy\" file for: ${APPDN}" > ${ERRLOG}; continue; }
-#    [ -s repoenv ] && BRANCH=$(cat ${APPDIR}/repoenv);
-#    [ -s repotag ] && TAGVER=$(cat ${APPDIR}/repotag);
-#    [ -f scalevalue ] && SCALEAPP=$(cat ${APPDIR}/scalevalue); SCALEAPP=${SCALEAPP:-"1"};
-#    [ -f minscalevalue ] && MINSCALEAPP=$(cat ${APPDIR}/minscalevalue); MINSCALEAPP=${MINSCALEAPP:-"1"};
-#    [ -f maxscalevalue ] && MAXSCALEAPP=$(cat ${APPDIR}/maxscalevalue); MAXSCALEAPP=${MAXSCALEAPP:-"4"};
-#    [ -f cpuvalue ] && CPUAPP=$(cat ${APPDIR}/cpuvalue); CPUAPP=${CPUAPP:-"512"};
-#    [ -f memvalue ] && MEMAPP=$(cat ${APPDIR}/memvalue); MEMAPP=${MEMAPP:-"1024"};
-#    [ -f portvalue ] && PORTAPP=$(cat ${APPDIR}/portvalue); 
-#    [ -f albvalue ] && ALBPRIAPP=$(cat ${APPDIR}/albvalue); 
-#    [ -f albhealth ] && ALBHEALTH=$(cat ${APPDIR}/albhealth); ALBHEALTH=${ALBHEALTH:-/};
-#    [ -f alertstack ] && ALERTSTACK=$(cat ${APPDIR}/alertstack);
-#    [ -f clusterstack ] && CLUSTACK=$(cat ${APPDIR}/clusterstack);
-#    [ -f ddogstack ] && DDOGSTACK=$(cat ${APPDIR}/ddogstack);
-
-
 
 exit 0;

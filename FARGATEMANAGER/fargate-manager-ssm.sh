@@ -133,6 +133,7 @@ function cloudformateapp() {
       ParameterKey=LoadBalancerHostPattern,ParameterValue=${APPDN}.${ENVNAME}.${ECSDOMAIN} \
       ParameterKey=LoadBalancerHttps,ParameterValue=false \
       ParameterKey=DesiredCount,ParameterValue=${SCALEAPP} \
+      ParameterKey=HealthCheckGracePeriodSeconds,ParameterValue=${ALBGRACE} \
       ParameterKey=MaxCapacity,ParameterValue=${MAXSCALEAPP} \
       ParameterKey=MinCapacity,ParameterValue=${MINSCALEAPP} \
       ParameterKey=ParentAlertStack,ParameterValue="${ALERTSTACK}" \
@@ -280,6 +281,7 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
     [ -s ${APPDIR}/repoenv ] && BRANCH=$(cat ${APPDIR}/repoenv);
     [ -s ${APPDIR}/repotag ] && TAGVER=$(cat ${APPDIR}/repotag);
     [ -f ${APPDIR}/scalevalue ] && SCALEAPP=$(cat ${APPDIR}/scalevalue); SCALEAPP=${SCALEAPP:-"1"};
+    [ -f ${APPDIR}/albgracesec ] && ALBGRACE=$(cat ${APPDIR}/albgracesec); ALBGRACE=${ALBGRACE:-"120"};
     [ -f ${APPDIR}/minscalevalue ] && MINSCALEAPP=$(cat ${APPDIR}/minscalevalue); MINSCALEAPP=${MINSCALEAPP:-"1"};
     [ -f ${APPDIR}/maxscalevalue ] && MAXSCALEAPP=$(cat ${APPDIR}/maxscalevalue); MAXSCALEAPP=${MAXSCALEAPP:-"4"};
     [ -f ${APPDIR}/cpuvalue ] && CPUAPP=$(cat ${APPDIR}/cpuvalue); CPUAPP=${CPUAPP:-"512"};
