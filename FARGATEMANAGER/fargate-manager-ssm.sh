@@ -24,7 +24,7 @@
 
 # Folder where configurations are stored 
 # Required structure is: $WORKDIR/<ClusterName>/<ServiceName>/<ConfigFilesDescribedAbove>
-WORKDIR="/tmp/fargate-manager"
+WORKDIR="/usr/share/fargate"
 ECSDOMAIN="ecs.lmcloud.aws"
 
 #The following vars, should not be changed.
