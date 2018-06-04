@@ -60,6 +60,8 @@ Options:
 		Cluster Name (mandatory)
 	-s|S
 		Service Name (optional)
+	-t|T
+                Deploy Mode (optional FARGATE or EC2)
 EOF
 	exit 0;
 }
@@ -107,7 +109,12 @@ function cloudformateapp() {
 # Create or upgrade Cloudformation for the service
     _ACTION="$1";
     _ENV_FILEPATTERN="$2";
+    [ -f ${WORKDIR}/service-cluster-alb-ec2.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-ec2.yaml is missing."
     [ -f ${WORKDIR}/service-cluster-alb-fargate-envs.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-fargate-envs.yaml is missing."
+
+    [ "${DEPLOYMODE}" == "FARGATE" ] && CLUSTERTEMPLATE="service-cluster-alb-fargate-envs.yaml";
+    [ "${DEPLOYMODE}" == "EC2" ] && CLUSTERTEMPLATE="service-cluster-alb-ec2.yaml";
+
 
     COUNTENV=0;
     PARAMENVS="";
@@ -119,7 +126,7 @@ function cloudformateapp() {
     done
 
     aws cloudformation ${_ACTION}-stack  --stack-name ${APPDN} \
-    --template-body file://${WORKDIR}/service-cluster-alb-fargate-envs.yaml \
+    --template-body file://${WORKDIR}/${CLUSTERTEMPLATE} \
     --capabilities CAPABILITY_IAM \
     --parameters \
       ParameterKey=ContainerPort,ParameterValue=${PORTAPP} \
@@ -245,11 +252,12 @@ function checkapp() {
 }
 
 # Options Parser
-while getopts "hHc:C:s:S:" opt "$@"
+while getopts "hHc:C:s:S:t:T:" opt "$@"
 do
         case $opt in
                 c|C) ENVNAME=$OPTARG;;
                 s|S) APPNAME=$OPTARG;;
+		t|T) DEPLOYMODE=$OPTARG;;
                 h|H) usage;;
                 *) error "Unknown option!";
         esac
@@ -259,6 +267,17 @@ done
 [ -z "${ENVNAME}" ] && error "Cluster name is mandatory";
 # Cycle on all services if no service is recieved by cmdline.
 [ -z "${APPNAME}" ] || FINDAPPNAME="-iname ${APPNAME}";
+DEPLOYMODE=${DEPLOYMODE:-"FARGATE"};
+
+if [ "${DEPLOYMODE}" == "EC2" ];
+then
+    echo "Deploy Mode selected: ${DEPLOYMODE}";
+else if [ "${DEPLOYMODE}" == "FARGATE" ];
+then
+    echo "Deploy Mode selected: ${DEPLOYMODE}";
+else
+    error "Unknown option: ${DEPLOYMODE} !"
+fi
 
 #Fill the workdir via ssm
 populateworkdir;
@@ -298,13 +317,17 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
     # Check if the required scaling factor for the APP has already been set
     checkapp ${ENVNAME} ${APPDN} ${BRANCH} ${TAGVER} ${SCALEAPP};
     CHECKAPP=$?;
-    echo "CHECKAPP=${CHECKAPP}"
+    echo -n "CHECKAPP=${CHECKAPP} - DEPLOYMODE=";
+    colecho "0" "${DEPLOYMODE}";
 
     # Create or update APP
     [ ${CHECKAPP} -eq 4 ] && cloudformateapp create "${APPDIR}/environmentvars" && continue;
-    [ ${CHECKAPP} -eq 3 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
-    [ ${CHECKAPP} -eq 2 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
-#    [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
+    if [ ${DEPLOYMODE} == "FARGATE" ];
+    then
+        [ ${CHECKAPP} -eq 3 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
+        [ ${CHECKAPP} -eq 2 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
+#       [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
+    fi
 
     # Set ENV variables for the APP
     setenv ${ENVNAME} ${APPDN} "${APPDIR}/environmentvars"
