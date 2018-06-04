@@ -272,7 +272,7 @@ DEPLOYMODE=${DEPLOYMODE:-"FARGATE"};
 if [ "${DEPLOYMODE}" == "EC2" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
-else if [ "${DEPLOYMODE}" == "FARGATE" ];
+elif [ "${DEPLOYMODE}" == "FARGATE" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
 else
