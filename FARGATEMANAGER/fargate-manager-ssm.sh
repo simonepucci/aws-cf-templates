@@ -304,7 +304,7 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
     [ ${CHECKAPP} -eq 4 ] && cloudformateapp create "${APPDIR}/environmentvars" && continue;
     [ ${CHECKAPP} -eq 3 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
     [ ${CHECKAPP} -eq 2 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
-    [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
+#    [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
 
     # Set ENV variables for the APP
     setenv ${ENVNAME} ${APPDN} "${APPDIR}/environmentvars"
