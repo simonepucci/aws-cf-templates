@@ -122,7 +122,7 @@ function cloudformateapp() {
     do
         let COUNTENV=$((COUNTENV + 1));
         [ ${COUNTENV} -gt 40 ] && continue;
-        PARAMENVS="${PARAMENVS} ParameterKey=Env${COUNTENV},ParameterValue='$(cat ${envfileitem})'";
+        PARAMENVS="${PARAMENVS} ParameterKey=Env${COUNTENV},ParameterValue='$(cat ${envfileitem} 2>/dev/null)'";
     done
 
     aws cloudformation ${_ACTION}-stack  --stack-name ${APPDN} \
@@ -183,7 +183,8 @@ function setenv() {
     NL=$(comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | wc -l);
     if [ $NL -gt 0 ];
     then 
-        comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | xargs -I _ENVV_ echo "--key _ENVV_" | xargs fargate service env unset $APPDN --cluster ${ENVNAME}
+        [ "${DEPLOYMODE}" == "FARGATE" ] && { comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | xargs -I _ENVV_ echo "--key _ENVV_" | xargs fargate service env unset $APPDN --cluster ${ENVNAME}; };
+	[ "${DEPLOYMODE}" == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
     fi
 
     unset NL;
@@ -196,7 +197,8 @@ function setenv() {
     NL=$(comm -23 ${ENV_FILE} ${SERVICE_ENV} | wc -l);
     if [ $NL -gt 0 ];
     then
-        comm -23 ${ENV_FILE} ${SERVICE_ENV} | xargs -I _ENVV_ echo "--env _ENVV_" | xargs fargate service env set $APPDN --cluster ${ENVNAME}
+        [ "${DEPLOYMODE}" == "FARGATE" ] && { comm -23 ${ENV_FILE} ${SERVICE_ENV} | xargs -I _ENVV_ echo "--env _ENVV_" | xargs fargate service env set $APPDN --cluster ${ENVNAME}; };
+	[ "${DEPLOYMODE}" == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
     fi
 
     # Delete temp files
@@ -222,11 +224,17 @@ function checkapp() {
     SCALING_FACTOR="$5";
 
     # Get service info if present
-    fargate service info "${SERVICE_NAME}" --cluster ${CLUSTER_NAME} > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
-    grep -Eq "Service not found|Could not find ${SERVICE_NAME}" ${SERVICE_INFO};
-    [ $? -ne 0 ] && let RETVAL=$((RETVAL - 1)) || return ${RETVAL};
+    aws ecs list-services --launch-type ${DEPLOYMODE} --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+    [ $? -eq 0 ] && let RETVAL=$((RETVAL - 1)) || return ${RETVAL};
     #echo "RETVAL1=${RETVAL}";
 
+    if [ "${DEPLOYMODE}" == "FARGATE" ];
+    then
+        # Fill the temporary file with fargate service info
+        fargate service info "${SERVICE_NAME}" --cluster ${CLUSTER_NAME} > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
+    else
+	aws ecs describe-task-definition --task-definition "${SERVICE_NAME}" --output text > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
+    fi
     # Check if deployed image is correct
     grep -q "${IMAGE_SRC}" ${SERVICE_INFO};
     [ $? -eq 0 ] && let RETVAL=$((RETVAL - 1)) || return ${RETVAL};
@@ -238,7 +246,7 @@ function checkapp() {
     #echo "RETVAL3=${RETVAL}";
 
     # Check if scaling factor is correct
-    RUNNINGSF=$(grep -A 10 Deployments ${SERVICE_INFO} | grep -E 'primary|active' | tail -n 1 | grep "${IMAGE_SRC}:${IMAGE_VERSION}" | awk '{print $8}')
+    RUNNINGSF=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --output text | grep 'SERVICES' | grep ${SERVICE_NAME} | awk '{print $9}');
     if [ ${SCALING_FACTOR} -eq ${RUNNINGSF} ];
     then
         let RETVAL=$((RETVAL - 1));
@@ -327,6 +335,10 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
         [ ${CHECKAPP} -eq 3 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
         [ ${CHECKAPP} -eq 2 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
 #       [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
+    else
+        [ ${CHECKAPP} -eq 3 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
+        [ ${CHECKAPP} -eq 2 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
+#       [ ${CHECKAPP} -eq 1 ] && aws ecs update-service --cluster ${ENVNAME} --service ${APPDN} --desired-count ${SCALEAPP} --force-new-deployment
     fi
 
     # Set ENV variables for the APP
