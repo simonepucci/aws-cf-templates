@@ -112,8 +112,8 @@ function cloudformateapp() {
     [ -f ${WORKDIR}/service-cluster-alb-ec2.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-ec2.yaml is missing."
     [ -f ${WORKDIR}/service-cluster-alb-fargate-envs.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-fargate-envs.yaml is missing."
 
-    [ "${DEPLOYMODE}" == "FARGATE" ] && CLUSTERTEMPLATE="service-cluster-alb-fargate-envs.yaml";
-    [ "${DEPLOYMODE}" == "EC2" ] && CLUSTERTEMPLATE="service-cluster-alb-ec2.yaml";
+    [ ${DEPLOYMODE} == "FARGATE" ] && CLUSTERTEMPLATE="service-cluster-alb-fargate-envs.yaml";
+    [ ${DEPLOYMODE} == "EC2" ] && CLUSTERTEMPLATE="service-cluster-alb-ec2.yaml";
 
 
     COUNTENV=0;
@@ -166,8 +166,20 @@ function setenv() {
     done
     
     # Read currently set env vars in service
-    fargate service env list ${SERVICE_NAME} --cluster ${CLUSTER_NAME} > ${SERVICE_ENV};
-    [ $? -eq 0 ] || return 1;
+    if [ ${DEPLOYMODE} == "FARGATE" ];
+    then
+        fargate service env list ${SERVICE_NAME} --cluster ${CLUSTER_NAME} > ${SERVICE_ENV};
+    elif [ ${DEPLOYMODE} == "EC2" ];
+    then
+	rm -f ${SERVICE_ENV};
+        aws ecs describe-task-definition --task-definition ${SERVICE_NAME} --output text | grep "^ENVIRONMENT" | while read line;
+        do
+	    echo -n "$line" | awk '{printf "%s=",$2}' >> ${SERVICE_ENV};
+	    echo "$line" | awk '{$1=$2=""; print $0}' | sed "s/^[ \t]*//" >> ${SERVICE_ENV};
+	done
+    else
+        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
+    fi
 
     sort ${SERVICE_ENV} -o ${SERVICE_ENV};
     sort ${ENV_FILE} -o ${ENV_FILE};
@@ -183,8 +195,8 @@ function setenv() {
     NL=$(comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | wc -l);
     if [ $NL -gt 0 ];
     then 
-        [ "${DEPLOYMODE}" == "FARGATE" ] && { comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | xargs -I _ENVV_ echo "--key _ENVV_" | xargs fargate service env unset $APPDN --cluster ${ENVNAME}; };
-	[ "${DEPLOYMODE}" == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
+        [ ${DEPLOYMODE} == "FARGATE" ] && { comm -23 ${SERVICE_ENV}.keysonly.log ${SERVICE_ENV}.keysonly-env.log | xargs -I _ENVV_ echo "--key _ENVV_" | xargs fargate service env unset $APPDN --cluster ${ENVNAME}; };
+	[ ${DEPLOYMODE} == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
     fi
 
     unset NL;
@@ -197,8 +209,8 @@ function setenv() {
     NL=$(comm -23 ${ENV_FILE} ${SERVICE_ENV} | wc -l);
     if [ $NL -gt 0 ];
     then
-        [ "${DEPLOYMODE}" == "FARGATE" ] && { comm -23 ${ENV_FILE} ${SERVICE_ENV} | xargs -I _ENVV_ echo "--env _ENVV_" | xargs fargate service env set $APPDN --cluster ${ENVNAME}; };
-	[ "${DEPLOYMODE}" == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
+        [ ${DEPLOYMODE} == "FARGATE" ] && { comm -23 ${ENV_FILE} ${SERVICE_ENV} | xargs -I _ENVV_ echo "--env _ENVV_" | xargs fargate service env set $APPDN --cluster ${ENVNAME}; };
+	[ ${DEPLOYMODE} == "EC2" ] && { cloudformateapp update "${APPDIR}/environmentvars"; };
     fi
 
     # Delete temp files
@@ -228,12 +240,15 @@ function checkapp() {
     [ $? -eq 0 ] && let RETVAL=$((RETVAL - 1)) || return ${RETVAL};
     #echo "RETVAL1=${RETVAL}";
 
-    if [ "${DEPLOYMODE}" == "FARGATE" ];
+    if [ ${DEPLOYMODE} == "FARGATE" ];
     then
         # Fill the temporary file with fargate service info
         fargate service info "${SERVICE_NAME}" --cluster ${CLUSTER_NAME} > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
-    else
+    elif [ ${DEPLOYMODE} == "EC2" ];
+    then
 	aws ecs describe-task-definition --task-definition "${SERVICE_NAME}" --output text > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
+    else
+        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
     fi
     # Check if deployed image is correct
     grep -q "${IMAGE_SRC}" ${SERVICE_INFO};
@@ -277,14 +292,14 @@ done
 [ -z "${APPNAME}" ] || FINDAPPNAME="-iname ${APPNAME}";
 DEPLOYMODE=${DEPLOYMODE:-"FARGATE"};
 
-if [ "${DEPLOYMODE}" == "EC2" ];
+if [ ${DEPLOYMODE} == "EC2" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
-elif [ "${DEPLOYMODE}" == "FARGATE" ];
+elif [ ${DEPLOYMODE} == "FARGATE" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
 else
-    error "Unknown option: ${DEPLOYMODE} !"
+    error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
 fi
 
 #Fill the workdir via ssm
@@ -335,10 +350,13 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
         [ ${CHECKAPP} -eq 3 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
         [ ${CHECKAPP} -eq 2 ] && fargate service deploy ${APPDN} --image "${BRANCH}:${TAGVER}" --cluster ${ENVNAME} && continue;
 #       [ ${CHECKAPP} -eq 1 ] && fargate service scale ${APPDN} ${SCALEAPP} --cluster ${ENVNAME};
-    else
+    elif [ ${DEPLOYMODE} == "EC2" ];
+    then
         [ ${CHECKAPP} -eq 3 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
         [ ${CHECKAPP} -eq 2 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
 #       [ ${CHECKAPP} -eq 1 ] && aws ecs update-service --cluster ${ENVNAME} --service ${APPDN} --desired-count ${SCALEAPP} --force-new-deployment
+    else
+        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
     fi
 
     # Set ENV variables for the APP
