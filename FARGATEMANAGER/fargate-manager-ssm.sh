@@ -171,7 +171,7 @@ function setenv() {
         fargate service env list ${SERVICE_NAME} --cluster ${CLUSTER_NAME} > ${SERVICE_ENV};
     elif [ ${DEPLOYMODE} == "EC2" ];
     then
-	rm -f ${SERVICE_ENV};
+	rm -f ${SERVICE_ENV}; touch ${SERVICE_ENV};
         aws ecs describe-task-definition --task-definition ${SERVICE_NAME} --output text | grep "^ENVIRONMENT" | while read line;
         do
 	    echo -n "$line" | awk '{printf "%s=",$2}' >> ${SERVICE_ENV};
