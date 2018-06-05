@@ -116,6 +116,26 @@ function cloudformateapp() {
     [ ${DEPLOYMODE} == "EC2" ] && CLUSTERTEMPLATE="service-cluster-alb-ec2.yaml";
 
 
+    # Check if environment variables number exceed the max allowed in Cloudformation template
+    COUNTENV=0;
+    for envfileitem in ${_ENV_FILEPATTERN}*;
+    do
+        let COUNTENV=$((COUNTENV + 1));
+    done
+    if [ ${COUNTENV} -gt 40 ];
+    then
+        if [ ${DEPLOYMODE} == "EC2" ];
+	then
+	    echo -n "Application: ";
+	    colecho "0" "${APPDN}";
+	    echo -n "-  Has: ";
+	    colecho "1" "${COUNTENV}";
+	    echo "-  Environment variables set, but with EC2 DEPLOYMODE, the limit is 40.";
+	    echo "-  Exceding variables will not be set.";
+	fi
+    fi
+
+    # Add the first 40 environment variables to Cloudformation template parameters
     COUNTENV=0;
     PARAMENVS="";
     for envfileitem in ${_ENV_FILEPATTERN}*;
