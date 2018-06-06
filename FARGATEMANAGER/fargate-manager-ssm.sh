@@ -248,7 +248,7 @@ function sanitycheckapp() {
     then
         # Get service info if present
         aws ecs list-services --launch-type ${DEPLOYMODE} --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
-        [ $? -eq 0 ] && return 0 || error "1" "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting.";
+        [ $? -eq 0 ] && return 0 || error "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting." "1";
     fi
 }
 
