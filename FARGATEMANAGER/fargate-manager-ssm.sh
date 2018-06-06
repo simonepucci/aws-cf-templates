@@ -295,7 +295,9 @@ function checkapp() {
     #echo "RETVAL3=${RETVAL}";
 
     # Check if scaling factor is correct
-    RUNNINGSF=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --output text | grep 'SERVICES' | grep ${SERVICE_NAME} | awk '{print $9}');
+    [ ${DEPLOYMODE} == "EC2" ] && RUNNINGSF=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --output text | grep 'SERVICES' | grep ${SERVICE_NAME} | awk '{print $9}');
+    [ ${DEPLOYMODE} == "FARGATE" ] && RUNNINGSF=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --output text | grep 'SERVICES' | grep ${SERVICE_NAME} | awk '{print $10}');
+
     if [ ${SCALING_FACTOR} -eq ${RUNNINGSF} ];
     then
         let RETVAL=$((RETVAL - 1));
