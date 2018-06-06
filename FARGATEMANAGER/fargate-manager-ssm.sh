@@ -239,6 +239,20 @@ function setenv() {
 }
 
 # Program Function
+function sanitycheckapp() {
+    CLUSTER_NAME="$1";
+    SERVICE_NAME="$2";
+    # Get service info if present
+    aws ecs list-services --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+    if [ $? -eq 0 ];
+    then
+        # Get service info if present
+        aws ecs list-services --launch-type ${DEPLOYMODE} --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+        [ $? -eq 0 ] && return 0 || error "1" "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting.";
+    fi
+}
+
+# Program Function
 function checkapp() {
     RETVAL=4;
     SERVICE_INFO="${TMPCACHEFOLD}/$$.log";
@@ -354,6 +368,9 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
     [ -f ${APPDIR}/alertstack ] && ALERTSTACK=$(cat ${APPDIR}/alertstack);
     [ -f ${APPDIR}/clusterstack ] && CLUSTACK=$(cat ${APPDIR}/clusterstack);
     [ -f ${APPDIR}/ddogstack ] && DDOGSTACK=$(cat ${APPDIR}/ddogstack);
+
+    #Sanity check APP deploy mode
+    sanitycheckapp ${ENVNAME} ${APPDN};
 
     # Check if the APP already exist
     # Check if the APP version is already running
