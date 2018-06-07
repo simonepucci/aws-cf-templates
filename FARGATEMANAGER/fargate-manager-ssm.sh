@@ -243,11 +243,11 @@ function sanitycheckapp() {
     CLUSTER_NAME="$1";
     SERVICE_NAME="$2";
     # Get service info if present
-    aws ecs list-services --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+    aws ecs list-services --max-items 10000 --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
     if [ $? -eq 0 ];
     then
         # Get service info if present
-        aws ecs list-services --launch-type ${DEPLOYMODE} --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+        aws ecs list-services --launch-type ${DEPLOYMODE} --max-items 10000 --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
         [ $? -eq 0 ] && return 0 || error "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting." "1";
     fi
 }
@@ -270,7 +270,7 @@ function checkapp() {
     SCALING_FACTOR="$5";
 
     # Get service info if present
-    aws ecs list-services --launch-type ${DEPLOYMODE} --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
+    aws ecs list-services --launch-type ${DEPLOYMODE} --max-items 10000 --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
     [ $? -eq 0 ] && let RETVAL=$((RETVAL - 1)) || return ${RETVAL};
     #echo "RETVAL1=${RETVAL}";
 

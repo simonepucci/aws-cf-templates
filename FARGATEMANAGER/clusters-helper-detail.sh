@@ -31,10 +31,10 @@ do
     echo "--------------------------------------------------------------------------------";
 
     colecho "1" "EC2 Services:\n";
-    aws ecs list-services --launch-type EC2 --cluster ${line} --output text | awk '{print $2}' | cut -d '/' -f 2
+    aws ecs list-services --launch-type EC2 --max-items 10000 --cluster ${line} --output text | awk '{print $2}' | cut -d '/' -f 2
     echo;
     colecho "1" "FARGATE Services:\n";
-    aws ecs list-services --launch-type FARGATE --cluster ${line} --output text | awk '{print $2}' | cut -d '/' -f 2
+    aws ecs list-services --launch-type FARGATE --max-items 10000 --cluster ${line} --output text | awk '{print $2}' | cut -d '/' -f 2
     echo "--------------------------------------------------------------------------------";
     echo;
 done
