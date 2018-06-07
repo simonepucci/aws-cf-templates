@@ -198,7 +198,7 @@ function setenv() {
 	    echo "$line" | awk '{$1=$2=""; print $0}' | sed "s/^[ \t]*//" >> ${SERVICE_ENV};
 	done
     else
-        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
     fi
 
     sort ${SERVICE_ENV} -o ${SERVICE_ENV};
@@ -282,7 +282,7 @@ function checkapp() {
     then
 	aws ecs describe-task-definition --task-definition "${SERVICE_NAME}" --output text > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
     else
-        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
     fi
     # Check if deployed image is correct
     grep -q "${IMAGE_SRC}" ${SERVICE_INFO};
@@ -335,7 +335,7 @@ elif [ ${DEPLOYMODE} == "FARGATE" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
 else
-    error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
+    error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
 fi
 
 #Fill the workdir via ssm
@@ -395,7 +395,7 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
         [ ${CHECKAPP} -eq 2 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
 #       [ ${CHECKAPP} -eq 1 ] && aws ecs update-service --cluster ${ENVNAME} --service ${APPDN} --desired-count ${SCALEAPP} --force-new-deployment
     else
-        error "1" "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
     fi
 
     # Set ENV variables for the APP
