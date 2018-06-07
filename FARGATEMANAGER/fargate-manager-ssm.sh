@@ -26,6 +26,8 @@
 # Required structure is: $WORKDIR/<ClusterName>/<ServiceName>/<ConfigFilesDescribedAbove>
 WORKDIR="/usr/share/fargate"
 ECSDOMAIN="ecs.lmcloud.aws"
+CFTEMPLATEEC2="service-cluster-alb-ec2.yaml";
+CFTEMPLATEFARGATE="service-cluster-alb-fargate-envs.yaml";
 
 #The following vars, should not be changed.
 [ -d /dev/shm ] && TMPCACHEFOLD="/dev/shm/fargatemanager" || TMPCACHEFOLD="/tmp/fargatemanager"
@@ -109,11 +111,11 @@ function cloudformateapp() {
 # Create or upgrade Cloudformation for the service
     _ACTION="$1";
     _ENV_FILEPATTERN="$2";
-    [ -f ${WORKDIR}/service-cluster-alb-ec2.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-ec2.yaml is missing."
-    [ -f ${WORKDIR}/service-cluster-alb-fargate-envs.yaml ] || error "CloudFormation Cluster Template: ${WORKDIR}/service-cluster-alb-fargate-envs.yaml is missing."
+    [ -f ${WORKDIR}/${CFTEMPLATEEC2} ] || error "CloudFormation Cluster Template: ${WORKDIR}/${CFTEMPLATEEC2} is missing.";
+    [ -f ${WORKDIR}/${CFTEMPLATEFARGATE} ] || error "CloudFormation Cluster Template: ${WORKDIR}/${CFTEMPLATEFARGATE} missing.";
 
-    [ ${DEPLOYMODE} == "FARGATE" ] && CLUSTERTEMPLATE="service-cluster-alb-fargate-envs.yaml";
-    [ ${DEPLOYMODE} == "EC2" ] && CLUSTERTEMPLATE="service-cluster-alb-ec2.yaml";
+    [ ${DEPLOYMODE} == "FARGATE" ] && CLUSTERTEMPLATE="${CFTEMPLATEFARGATE}";
+    [ ${DEPLOYMODE} == "EC2" ] && CLUSTERTEMPLATE="${CFTEMPLATEEC2}";
 
 
     # Check if environment variables number exceed the max allowed in Cloudformation template
@@ -198,7 +200,7 @@ function setenv() {
 	    echo "$line" | awk '{$1=$2=""; print $0}' | sed "s/^[ \t]*//" >> ${SERVICE_ENV};
 	done
     else
-        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
     fi
 
     sort ${SERVICE_ENV} -o ${SERVICE_ENV};
@@ -248,7 +250,7 @@ function sanitycheckapp() {
     then
         # Get service info if present
         aws ecs list-services --launch-type ${DEPLOYMODE} --max-items 10000 --cluster ${CLUSTER_NAME} --output text | awk '{print $2}' | cut -d '/' -f 2 | grep -q "${SERVICE_NAME}";
-        [ $? -eq 0 ] && return 0 || error "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting." "1";
+        [ $? -eq 0 ] && return 0 || error "You are tryng to deploy an existing app: ${SERVICE_NAME} with the wrong deploy mode... For this reason you can not continue, exiting.";
     fi
 }
 
@@ -282,7 +284,7 @@ function checkapp() {
     then
 	aws ecs describe-task-definition --task-definition "${SERVICE_NAME}" --output text > ${SERVICE_INFO} 2>> ${SERVICE_INFO};
     else
-        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
     fi
     # Check if deployed image is correct
     grep -q "${IMAGE_SRC}" ${SERVICE_INFO};
@@ -335,7 +337,7 @@ elif [ ${DEPLOYMODE} == "FARGATE" ];
 then
     echo "Deploy Mode selected: ${DEPLOYMODE}";
 else
-    error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
+    error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
 fi
 
 #Fill the workdir via ssm
@@ -395,7 +397,7 @@ find ${WORKDIR}/${ENVNAME} -mindepth 1 -maxdepth 1 -type d ${FINDAPPNAME} | whil
         [ ${CHECKAPP} -eq 2 ] && cloudformateapp update "${APPDIR}/environmentvars" && continue;
 #       [ ${CHECKAPP} -eq 1 ] && aws ecs update-service --cluster ${ENVNAME} --service ${APPDN} --desired-count ${SCALEAPP} --force-new-deployment
     else
-        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)" "1";
+        error "DEPLOYMODE: ${DEPLOYMODE} not recognized (Valid values are FARGATE or EC2)";
     fi
 
     # Set ENV variables for the APP
