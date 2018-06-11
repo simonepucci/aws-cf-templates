@@ -50,13 +50,6 @@ Parameters:
     Description: 'Optional stack name of parent zone stack based on vpc/zone-*.yaml template.'
     Type: String
     Default: ''
-  5XXThreshold:
-    Description: 'The Threshold value that is used for alarms binded to Elastic Load Balancing and TargetGroups 5XX errors.'
-    Type: Number
-    Default: 10
-    ConstraintDescription: 'Must be in the range [1-99999]'
-    MinValue: 1
-    MaxValue: 99999
   LoadBalancerPriority:
     Description: 'The priority for the rule. Elastic Load Balancing evaluates rules in priority order, from the lowest value to the highest value. If a request satisfies a rule, Elastic Load Balancing ignores all subsequent rules. A target group can have only one rule with a given priority.'
     Type: Number
@@ -711,7 +704,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       ComparisonOperator: GreaterThanThreshold
-      Threshold: !Sub '${5XXTreshold}'
+      Threshold: 10
       AlarmActions:
       - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
       Dimensions:
@@ -731,7 +724,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       ComparisonOperator: GreaterThanThreshold
-      Threshold: !Sub '${5XXTreshold}'
+      Threshold: 10
       AlarmActions:
       - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
       Dimensions:
@@ -771,7 +764,7 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       ComparisonOperator: GreaterThanThreshold
-      Threshold: !Sub '${5XXTreshold}'
+      Threshold: 1
       AlarmActions:
       - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
       Dimensions:
