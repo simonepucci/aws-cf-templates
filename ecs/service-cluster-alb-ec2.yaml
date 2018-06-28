@@ -91,12 +91,12 @@ Parameters:
 
     Type: Number
     Default: 512
-    AllowedValues: [256,512,1024,2048,4096]
+    #AllowedValues: [256,512,1024,2048,4096]
   Memory:
     Description: 'The memory hard limit set for the container'
     Type: Number
     Default: 1024
-    AllowedValues: [512,1024,2048,4096,8192,16384]
+    #AllowedValues: [512,1024,2048,4096,8192,16384]
   ContainerPort:
     Description: 'The port exposed by the container'
     Type: Number
