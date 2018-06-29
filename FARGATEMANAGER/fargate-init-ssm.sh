@@ -115,6 +115,7 @@ done
 
 SKIPDEPLOY=$(checkparameter skipdeploy);
 
+colecho "0" "[(ctrl + c) is safe to exit at any time (All entered values will be saved immediatly after the <ENTER>)]: ";
 REPOENV=$(checkparameter repoenv);
 REPOTAG=$(checkparameter repotag);
 SCALEVALUE=$(checkparameter scalevalue); SCALEVALUE=${SCALEVALUE:-"1"};
