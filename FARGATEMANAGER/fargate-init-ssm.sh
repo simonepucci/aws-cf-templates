@@ -93,6 +93,7 @@ function useraskparameter() {
     read ANSWER;
     ANSWER=${ANSWER:-${USERPARAM}};
     aws ssm put-parameter --name /${ENVNAME}/${APPNAME}/${PARAM} --region eu-west-1 --value ${ANSWER} --type String --overwrite >/dev/null;
+    [ $? -eq 0 ] && colecho "0" "Param saved" || colecho "1" "There was and errod savin param! [Unexpected error]";
     echo
 }
 
