@@ -1393,9 +1393,9 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Period: 60
-      EvaluationPeriods: 1
+      EvaluationPeriods: 5
       ComparisonOperator: GreaterThanThreshold
-      Threshold: 0
+      Threshold: 2
       AlarmActions:
       - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
       Dimensions:
