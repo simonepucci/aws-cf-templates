@@ -1,0 +1,1051 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "ECS: service that runs on an ECS cluster and uses the cluster's ALB based on ecs/cluster.yaml, a cloudonaut.io template"
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'CodePipeline Parameters'
+      Parameters:
+      - RepositoryName
+      - BranchName
+      - PipelineRole
+      - PipelineLocation
+      - GitHubOwner
+      - GitHubSecret
+      - GitHubOAuthToken
+    - Label:
+        default: 'Parent Stacks'
+      Parameters:
+      - ParentClusterStack
+      - ParentDDogStack
+      - ParentAlertStack
+      - ParentZoneStack
+    - Label:
+        default: 'Load Balancer Parameters'
+      Parameters:
+      - LoadBalancerPriority
+      - LoadBalancerHostPattern
+      - LoadBalancerPath
+      - LoadBalancerHttps
+      - LoadBalancerDeregistrationDelay
+    - Label:
+        default: 'Service Parameters'
+      Parameters:
+      - SubDomainName
+    - Label:
+        default: 'Task Parameters'
+      Parameters:
+      - Memory
+      - Cpu
+      - ContainerPort
+      - HealthCheckPath
+      - HealthCheckGracePeriodSeconds
+      - DesiredCount
+      - MaxCapacity
+      - MinCapacity
+Parameters:
+  RepositoryName:
+    Description: GitHub repository name
+    Type: String
+  BranchName:
+    Description: GitHub branch name
+    Type: String
+  PipelineRole:
+    Description: The Pipeline RoleArn
+    Type: String
+  PipelineLocation:
+    Description: The Pipeline S3 bucket
+    Type: String
+  GitHubOwner:
+    Type: String
+  GitHubSecret:
+    Type: String
+    NoEcho: true
+  GitHubOAuthToken:
+    Type: String
+    NoEcho: true
+  ParentClusterStack:
+    Description: 'Stack name of parent Cluster stack based on ecs/cluster.yaml template.'
+    Type: String
+  ParentDDogStack:
+    Description: 'Stack name of parent Data Dog stack based on ecs/datadog-key.yaml template.'
+    Type: String
+    Default: 'ddog-key'
+  ParentAlertStack:
+    Description: 'Optional but recommended stack name of parent alert stack based on operations/alert.yaml template.'
+    Type: String
+    Default: 'operations-alert'
+  ParentZoneStack:
+    Description: 'Optional stack name of parent zone stack based on vpc/zone-*.yaml template.'
+    Type: String
+    Default: ''
+  LoadBalancerPriority:
+    Description: 'The priority for the rule. Elastic Load Balancing evaluates rules in priority order, from the lowest value to the highest value. If a request satisfies a rule, Elastic Load Balancing ignores all subsequent rules. A target group can have only one rule with a given priority.'
+    Type: Number
+    Default: 1
+    ConstraintDescription: 'Must be in the range [1-99999]'
+    MinValue: 1
+    MaxValue: 99999
+  LoadBalancerHostPattern:
+    Description: 'Optional host pattern. Specify LoadBalancerPath and/or LoadBalancerHostPattern.'
+    Type: String
+    Default: ''
+    ConstraintDescription: 'Must not be longer than 255'
+    MaxLength: 255
+  LoadBalancerPath:
+    Description: 'Optional path part of the path pattern. E.g., for /service/*, the path pattern will be "/service/*".  Specify LoadBalancerPath and/or LoadBalancerHostPattern.'
+    Type: String
+    Default: 'service'
+    ConstraintDescription: 'Must not be longer than 255'
+    MaxLength: 255
+  LoadBalancerHttps:
+    Description: 'If the cluster supports HTTPS (LoadBalancerCertificateArn is set) you can enable HTTPS for the service'
+    Type: String
+    Default: false
+    AllowedValues:
+    - true
+    - false
+  LoadBalancerDeregistrationDelay:
+    Description: 'The amount time (in seconds) to wait before changing the state of a deregistering target from draining to unused.'
+    Type: Number
+    Default: 300
+    ConstraintDescription: 'Must be in the range [0-3600]'
+    MinValue: 0
+    MaxValue: 3600
+  Cpu:
+    Description: 'How much CPU to give the container. 1024 is 1 CPU. AWS Fargate only supports certain combinations of CPU and memory configurations: ex. cpu 256 - mem 512 or 1024 or 2048, cpu 512 - mem 1024 through 4096 in 1GiB increments, cpu 1024 - mem 2048 through 8192 in 1GiB increments, cpu 2048 - mem 4096 through 16384 in 1GiB increments, cpu 4096 - mem 8192 through 30720 in 1GiB increments'
+    Type: Number
+    Default: 512
+    AllowedValues: [256,512,1024,2048,4096]
+  Memory:
+    Description: 'The memory hard limit set for the container'
+    Type: Number
+    Default: 1024
+    AllowedValues: [512,1024,2048,4096,8192,16384]
+  ContainerPort:
+    Description: 'The port exposed by the container'
+    Type: Number
+    Default: 80
+  HealthCheckPath:
+    Description: 'The path against which will be done the HealthCheck'
+    Type: String
+    Default: '/'
+  HealthCheckGracePeriodSeconds:
+    Description: 'The period of time, in seconds, that the Amazon ECS service scheduler should ignore unhealthy Elastic Load Balancing target health checks after a task has first started'
+    Type: Number
+    Default: 120
+  DesiredCount:
+    Description: 'The number of simultaneous tasks, that you want to run on the cluster.'
+    Type: Number
+    Default: 1
+    ConstraintDescription: 'Must be >= 1'
+    MinValue: 1
+  MaxCapacity:
+    Description: 'The maximum number of simultaneous tasks, that you want to run on the cluster.'
+    Type: Number
+    Default: 4
+    ConstraintDescription: 'Must be >= 1'
+    MinValue: 1
+  MinCapacity:
+    Description: 'The minimum number of simultaneous tasks, that you want to run on the cluster.'
+    Type: Number
+    Default: 1
+    ConstraintDescription: 'Must be >= 1'
+    MinValue: 1
+  SubDomainName:
+    Description: 'Name that is used to create the DNS entry ${SubDomainName}.${HostedZoneName} (required when ParentZoneStack is set, otherwise not considered)'
+    Type: String
+    Default: ''
+  Env1:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env2:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env3:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env4:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env5:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env6:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env7:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env8:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env9:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env10:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env11:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env12:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env13:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env14:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env15:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env16:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env17:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env18:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env19:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env20:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env21:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env22:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env23:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env24:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env25:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env26:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env27:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env28:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env29:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env30:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env31:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env32:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env33:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env34:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+  Env35:
+    Type: String
+    Description: An item of possible environment variables
+    Default: ''
+Mappings:
+  CpuMap:
+    "256":
+      "1": "128"
+      "2": "128"
+    "512":
+      "1": "384"
+      "2": "128"
+    "1024":
+      "1": "768"
+      "2": "256"
+    "2048":
+      "1": "1792"
+      "2": "256"
+    "4096":
+      "1": "3840"
+      "2": "256"
+  MemMap:
+    "512":
+      "1": "384"
+      "2": "128"
+    "1024":
+      "1": "896"
+      "2": "128"
+    "2048":
+      "1": "1920"
+      "2": "128"
+    "4096":
+      "1": "3968"
+      "2": "128"
+    "8192":
+      "1": "8064"
+      "2": "128"
+    "16384":
+      "1": "16256"
+      "2": "128"
+Conditions:
+  HasLoadBalancerHttps: !Equals [!Ref LoadBalancerHttps, 'true']
+  HasLoadBalancerPath: !Not [!Equals [!Ref LoadBalancerPath, '']]
+  HasLoadBalancerHostPattern: !Not [!Equals [!Ref LoadBalancerHostPattern, '']]
+  HasAlertTopic: !Not [!Equals [!Ref ParentAlertStack, '']]
+  HasZone: !Not [!Equals [!Ref ParentZoneStack, '']]
+  Env1Exist: !Not [ !Equals [!Ref Env1, '']]
+  Env2Exist: !Not [ !Equals [!Ref Env2, '']]
+  Env3Exist: !Not [ !Equals [!Ref Env3, '']]
+  Env4Exist: !Not [ !Equals [!Ref Env4, '']]
+  Env5Exist: !Not [ !Equals [!Ref Env5, '']]
+  Env6Exist: !Not [ !Equals [!Ref Env6, '']]
+  Env7Exist: !Not [ !Equals [!Ref Env7, '']]
+  Env8Exist: !Not [ !Equals [!Ref Env8, '']]
+  Env9Exist: !Not [ !Equals [!Ref Env9, '']]
+  Env10Exist: !Not [ !Equals [!Ref Env10, '']]
+  Env11Exist: !Not [ !Equals [!Ref Env11, '']]
+  Env12Exist: !Not [ !Equals [!Ref Env12, '']]
+  Env13Exist: !Not [ !Equals [!Ref Env13, '']]
+  Env14Exist: !Not [ !Equals [!Ref Env14, '']]
+  Env15Exist: !Not [ !Equals [!Ref Env15, '']]
+  Env16Exist: !Not [ !Equals [!Ref Env16, '']]
+  Env17Exist: !Not [ !Equals [!Ref Env17, '']]
+  Env18Exist: !Not [ !Equals [!Ref Env18, '']]
+  Env19Exist: !Not [ !Equals [!Ref Env19, '']]
+  Env20Exist: !Not [ !Equals [!Ref Env20, '']]
+  Env21Exist: !Not [ !Equals [!Ref Env21, '']]
+  Env22Exist: !Not [ !Equals [!Ref Env22, '']]
+  Env23Exist: !Not [ !Equals [!Ref Env23, '']]
+  Env24Exist: !Not [ !Equals [!Ref Env24, '']]
+  Env25Exist: !Not [ !Equals [!Ref Env25, '']]
+  Env26Exist: !Not [ !Equals [!Ref Env26, '']]
+  Env27Exist: !Not [ !Equals [!Ref Env27, '']]
+  Env28Exist: !Not [ !Equals [!Ref Env28, '']]
+  Env29Exist: !Not [ !Equals [!Ref Env29, '']]
+  Env30Exist: !Not [ !Equals [!Ref Env30, '']]
+  Env31Exist: !Not [ !Equals [!Ref Env31, '']]
+  Env32Exist: !Not [ !Equals [!Ref Env32, '']]
+  Env33Exist: !Not [ !Equals [!Ref Env33, '']]
+  Env34Exist: !Not [ !Equals [!Ref Env34, '']]
+  Env35Exist: !Not [ !Equals [!Ref Env35, '']]
+Resources:
+  TaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Family: !Ref 'AWS::StackName'
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: 
+          !Sub '${ParentClusterStack}-ECSTaskExecutionRole'
+      TaskRoleArn:
+        !Ref "AWS::NoValue"
+      ContainerDefinitions:
+      - Name: main # if you change this, you also must change the AWS::ECS::Service
+        Image: "nginxdemos/hello:latest" # TODO This will be used before the first deploy. Provide a more appropriate one!
+        Cpu: !FindInMap [CpuMap, !Ref Cpu, 1]
+        Memory: !FindInMap [MemMap, !Ref Memory, 1]
+        PortMappings:
+        - ContainerPort: !Ref ContainerPort # if you change this, you also must change the AWS::ECS::Service
+          Protocol: tcp
+        Essential: true
+        Environment:
+          'Fn::If':
+            - Env1Exist
+            -
+              - Name: !Select [0, !Split ["|", !Ref Env1]]
+                Value: !Select [1, !Split ["|", !Ref Env1]]
+              - 'Fn::If':
+                - Env2Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env2]]
+                  Value: !Select [1, !Split ["|", !Ref Env2]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env3Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env3]]
+                  Value: !Select [1, !Split ["|", !Ref Env3]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env4Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env4]]
+                  Value: !Select [1, !Split ["|", !Ref Env4]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env5Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env5]]
+                  Value: !Select [1, !Split ["|", !Ref Env5]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env6Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env6]]
+                  Value: !Select [1, !Split ["|", !Ref Env6]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env7Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env7]]
+                  Value: !Select [1, !Split ["|", !Ref Env7]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env8Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env8]]
+                  Value: !Select [1, !Split ["|", !Ref Env8]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env9Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env9]]
+                  Value: !Select [1, !Split ["|", !Ref Env9]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env10Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env10]]
+                  Value: !Select [1, !Split ["|", !Ref Env10]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env11Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env11]]
+                  Value: !Select [1, !Split ["|", !Ref Env11]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env12Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env12]]
+                  Value: !Select [1, !Split ["|", !Ref Env12]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env13Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env13]]
+                  Value: !Select [1, !Split ["|", !Ref Env13]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env14Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env14]]
+                  Value: !Select [1, !Split ["|", !Ref Env14]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env15Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env15]]
+                  Value: !Select [1, !Split ["|", !Ref Env15]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env16Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env16]]
+                  Value: !Select [1, !Split ["|", !Ref Env16]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env17Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env17]]
+                  Value: !Select [1, !Split ["|", !Ref Env17]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env18Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env18]]
+                  Value: !Select [1, !Split ["|", !Ref Env18]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env19Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env19]]
+                  Value: !Select [1, !Split ["|", !Ref Env19]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env20Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env20]]
+                  Value: !Select [1, !Split ["|", !Ref Env20]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env21Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env21]]
+                  Value: !Select [1, !Split ["|", !Ref Env21]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env22Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env22]]
+                  Value: !Select [1, !Split ["|", !Ref Env22]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env23Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env23]]
+                  Value: !Select [1, !Split ["|", !Ref Env23]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env24Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env24]]
+                  Value: !Select [1, !Split ["|", !Ref Env24]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env25Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env25]]
+                  Value: !Select [1, !Split ["|", !Ref Env25]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env26Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env26]]
+                  Value: !Select [1, !Split ["|", !Ref Env26]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env27Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env27]]
+                  Value: !Select [1, !Split ["|", !Ref Env27]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env28Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env28]]
+                  Value: !Select [1, !Split ["|", !Ref Env28]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env29Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env29]]
+                  Value: !Select [1, !Split ["|", !Ref Env29]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env30Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env30]]
+                  Value: !Select [1, !Split ["|", !Ref Env30]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env31Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env31]]
+                  Value: !Select [1, !Split ["|", !Ref Env31]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env32Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env32]]
+                  Value: !Select [1, !Split ["|", !Ref Env32]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env33Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env33]]
+                  Value: !Select [1, !Split ["|", !Ref Env33]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env34Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env34]]
+                  Value: !Select [1, !Split ["|", !Ref Env34]]
+                - !Ref "AWS::NoValue"
+              - 'Fn::If':
+                - Env35Exist
+                -
+                  Name: !Select [0, !Split ["|", !Ref Env35]]
+                  Value: !Select [1, !Split ["|", !Ref Env35]]
+                - !Ref "AWS::NoValue"
+            - !Ref "AWS::NoValue"
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            'awslogs-region': !Ref 'AWS::Region'
+            'awslogs-group':
+              'Fn::ImportValue': !Sub '${ParentClusterStack}-LogGroup'
+            'awslogs-stream-prefix': !Ref 'AWS::StackName'
+      - Name: "datadog-agent"
+        Image: "datadog/agent:latest"
+        Cpu: !FindInMap [CpuMap, !Ref Cpu, 2]
+        Memory: !FindInMap [MemMap, !Ref Memory, 2]
+        Essential: true
+        Environment:
+          - Name: 'DD_API_KEY'
+            Value: 
+              Fn::ImportValue:
+                !Sub '${ParentDDogStack}-DataDogKey'
+          - Name: 'ECS_FARGATE'
+            Value: 'true'
+  RecordSet:
+    Condition: HasZone
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        HostedZoneId:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-CanonicalHostedZoneID'
+        DNSName:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-DNSName'
+      HostedZoneId:
+        'Fn::ImportValue': !Sub '${ParentZoneStack}-HostedZoneId'
+      Name: !Sub
+      - '${SubDomainName}.${HostedZoneName}'
+      - SubDomainName: !Ref SubDomainName
+        HostedZoneName:
+          'Fn::ImportValue': !Sub '${ParentZoneStack}-HostedZoneName'
+      Type: A
+  LoadBalancerTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      HealthCheckIntervalSeconds: 15
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetType: ip
+      Matcher:
+        HttpCode: '200-299'
+      Port: 80
+      Protocol: HTTP
+      VpcId:
+        'Fn::ImportValue': !Sub '${ParentClusterStack}-VPC'
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: !Ref LoadBalancerDeregistrationDelay
+  HTTPCodeELB5XXTooHighAlarm:
+    Condition: HasAlertTopic
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Application load balancer returns 5XX HTTP status codes'
+      Namespace: 'AWS/ApplicationELB'
+      MetricName: HTTPCode_ELB_5XX_Count
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 10
+      AlarmActions:
+      - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
+      Dimensions:
+      - Name: LoadBalancer
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-LoadBalancerFullName'
+      - Name: TargetGroup
+        Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+  HTTPCodeTarget5XXTooHighAlarm:
+    Condition: HasAlertTopic
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Application load balancer receives 5XX HTTP status codes from targets'
+      Namespace: 'AWS/ApplicationELB'
+      MetricName: HTTPCode_Target_5XX_Count
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 10
+      AlarmActions:
+      - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
+      Dimensions:
+      - Name: LoadBalancer
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-LoadBalancerFullName'
+      - Name: TargetGroup
+        Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+  RejectedConnectionCountTooHighAlarm:
+    Condition: HasAlertTopic
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Application load balancer rejected connections because the load balancer had reached its maximum number of connections'
+      Namespace: 'AWS/ApplicationELB'
+      MetricName: RejectedConnectionCount
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      AlarmActions:
+      - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
+      Dimensions:
+      - Name: LoadBalancer
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-LoadBalancerFullName'
+      - Name: TargetGroup
+        Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+  TargetConnectionErrorCountTooHighAlarm:
+    Condition: HasAlertTopic
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Application load balancer could not connect to targets'
+      Namespace: 'AWS/ApplicationELB'
+      MetricName: TargetConnectionErrorCount
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 1
+      AlarmActions:
+      - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
+      Dimensions:
+      - Name: LoadBalancer
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-LoadBalancerFullName'
+      - Name: TargetGroup
+        Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+  LoadBalancerHttpListenerRule:
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref LoadBalancerTargetGroup
+      Conditions: !If
+      - HasLoadBalancerPath
+      - !If
+        - HasLoadBalancerHostPattern
+        - - Field: host-header
+            Values:
+            - !Ref LoadBalancerHostPattern
+          - Field: path-pattern
+            Values:
+            - !Sub '${LoadBalancerPath}'
+        - - Field: path-pattern
+            Values:
+            - !Sub '${LoadBalancerPath}'
+      - !If
+        - HasLoadBalancerHostPattern
+        - - Field: host-header
+            Values:
+            - !Ref LoadBalancerHostPattern
+        - [] # neither LoadBalancerHostPattern nor LoadBalancerPath specified
+      ListenerArn:
+        'Fn::ImportValue': !Sub '${ParentClusterStack}-HttpListener'
+      Priority: !Ref LoadBalancerPriority
+  LoadBalancerHttpsListenerRule:
+    Condition: HasLoadBalancerHttps
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref LoadBalancerTargetGroup
+      Conditions: !If
+      - HasLoadBalancerPath
+      - !If
+        - HasLoadBalancerHostPattern
+        - - Field: host-header
+            Values:
+            - !Ref LoadBalancerHostPattern
+          - Field: path-pattern
+            Values:
+            - !Sub '${LoadBalancerPath}'
+        - - Field: path-pattern
+            Values:
+            - !Sub '${LoadBalancerPath}'
+      - !If
+        - HasLoadBalancerHostPattern
+        - - Field: host-header
+            Values:
+            - !Ref LoadBalancerHostPattern
+        - [] # neither LoadBalancerHostPattern nor LoadBalancerPath specified
+      ListenerArn:
+        'Fn::ImportValue': !Sub '${ParentClusterStack}-HttpsListener'
+      Priority: !Ref LoadBalancerPriority
+  Service:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      ServiceName: !Sub '${AWS::StackName}'
+      Cluster:
+        'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      DesiredCount: !Ref DesiredCount
+      HealthCheckGracePeriodSeconds: !Ref HealthCheckGracePeriodSeconds
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - Fn::ImportValue:
+                !Join ['-', [!Ref 'ParentClusterStack', 'SecurityGroup']]
+            - Fn::ImportValue:
+                !Join ['-', [!Ref 'ParentClusterStack', 'SecurityGroupVpcDefault']]
+          Subnets: !Split [',', 'Fn::ImportValue': !Sub '${ParentClusterStack}-SubnetsReach']
+
+      LoadBalancers:
+      - ContainerName: main
+        ContainerPort: !Ref ContainerPort
+        TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+      TaskDefinition: !Ref TaskDefinition
+  ScalableTargetRole: # based on http://docs.aws.amazon.com/AmazonECS/latest/developerguide/autoscale_IAM_role.html
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'application-autoscaling.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+      - PolicyName: ecs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ecs:DescribeServices'
+            - 'ecs:UpdateService'
+            Resource: '*'
+      - PolicyName: cloudwatch
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'cloudwatch:DescribeAlarms'
+            Resource: '*'
+  ScalableTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: !Ref MaxCapacity
+      MinCapacity: !Ref MinCapacity
+      ResourceId: !Sub
+      - 'service/${Cluster}/${Service}'
+      - Cluster:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
+        Service: !GetAtt 'Service.Name'
+      RoleARN: !GetAtt 'ScalableTargetRole.Arn'
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ServiceNamespace: ecs
+  ScaleUpPolicy:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-scale-up'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 300
+        MinAdjustmentMagnitude: 1
+        StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: 25
+  ScaleDownPolicy:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-scale-down'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 300
+        MinAdjustmentMagnitude: 1
+        StepAdjustments:
+        - MetricIntervalUpperBound: 0
+          ScalingAdjustment: -25
+  CPUUtilizationTooHighAlarm:
+    Condition: HasAlertTopic
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Average CPU utilization over last 10 minutes higher than 80%'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+      - Name: ClusterName
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
+      - Name: ServiceName
+        Value: !GetAtt 'Service.Name'
+      MetricName: CPUUtilization
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      AlarmActions:
+      - 'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'
+  CPUUtilizationHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Service is running out of CPU'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+      - Name: ClusterName
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
+      - Name: ServiceName
+        Value: !GetAtt 'Service.Name'
+      MetricName: CPUUtilization
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 60
+      AlarmActions:
+      - !Ref ScaleUpPolicy
+  CPUUtilizationLowAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Service is wasting CPU'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+      - Name: ClusterName
+        Value:
+          'Fn::ImportValue': !Sub '${ParentClusterStack}-Cluster'
+      - Name: ServiceName
+        Value: !GetAtt 'Service.Name'
+      MetricName: CPUUtilization
+      ComparisonOperator: LessThanThreshold
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 30
+      AlarmActions:
+      - !Ref ScaleDownPolicy
+  AppPipelineWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: !Ref GitHubSecret
+      Filters:
+        - JsonPath: $.ref
+          MatchEquals: 'refs/heads/{Branch}'
+      TargetPipeline: !Ref AppPipeline
+      TargetAction: SourceAction
+      Name: !Sub '${AWS::StackName}'
+      TargetPipelineVersion: !GetAtt
+        - AppPipeline
+        - Version
+      RegisterWithThirdParty: true
+  AppPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: !Sub '${AWS::StackName}'
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref RepositoryName
+                Branch: !Ref BranchName
+                OAuthToken: !Ref GitHubOAuthToken
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Sub '${AWS::StackName}'
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: DeployAction
+              InputArtifacts:
+                - Name: BuildOutput
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: ECS
+              Configuration:
+                ClusterName: !Ref ParentClusterStack
+                ServiceName: !Sub '${AWS::StackName}'
+              RunOrder: 1
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineLocation
+      RoleArn: !Ref PipelineRole
+    DependsOn: Service
+Outputs:
+  TemplateID:
+    Description: 'cloudonaut.io template id'
+    Value: 'ecs/service-cluster-alb'
+  StackName:
+    Description: 'Stack name'
+    Value: !Sub '${AWS::StackName}'
+  DNSName:
+    Description: 'The DNS name for the ECS cluster/service load balancer.'
+    Value:
+      'Fn::ImportValue': !Sub '${ParentClusterStack}-DNSName'
+    Export:
+      Name: !Sub '${AWS::StackName}-DNSName'
+  URL:
+    Description: 'URL to the ECS service.' # TODO does not work with LoadBalancerHostPattern
+    Value: !Sub
+    - '${ClusterURL}/${LoadBalancerPath}/'
+    - ClusterURL:
+        'Fn::ImportValue': !Sub '${ParentClusterStack}-URL'
+      LoadBalancerPath: !Ref LoadBalancerPath
+    Export:
+      Name: !Sub '${AWS::StackName}-URL'
