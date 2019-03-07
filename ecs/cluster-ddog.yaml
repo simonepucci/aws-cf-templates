@@ -146,7 +146,7 @@ Mappings:
     'eu-west-2':
       ECSAMI: 'ami-25f51242'
     'eu-west-1':
-      ECSAMI: 'ami-c91624b0'
+      ECSAMI: 'ami-0627e141ce928067c'
     'ap-northeast-2':
       ECSAMI: 'ami-3b19b455'
     'ap-northeast-1':
