@@ -950,8 +950,10 @@ Resources:
           trap '/opt/aws/bin/cfn-signal -e 1 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}' ERR
           echo "ECS_CLUSTER=${Cluster}" >> /etc/ecs/ecs.config
           yum install -y aws-cfn-bootstrap aws-cli jq
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
-          /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region} &
+          sleep 5
+          /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region} &
+          sleep 5
           start ecs
           sleep 5
           task_def="dd-agent-task"
