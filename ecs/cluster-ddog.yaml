@@ -146,7 +146,7 @@ Mappings:
     'eu-west-2':
       ECSAMI: 'ami-25f51242'
     'eu-west-1':
-      ECSAMI: 'ami-0627e141ce928067c'
+      ECSAMI: 'ami-00921cd1ce43d567a'
     'ap-northeast-2':
       ECSAMI: 'ami-3b19b455'
     'ap-northeast-1':
@@ -947,6 +947,7 @@ Resources:
         'Fn::Base64': !Sub |
           #!/bin/bash
           mset -o pipefail
+          yum update -y ecs-init
           trap '/opt/aws/bin/cfn-signal -e 1 --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}' ERR
           echo "ECS_CLUSTER=${Cluster}" >> /etc/ecs/ecs.config
           yum install -y aws-cfn-bootstrap aws-cli jq
